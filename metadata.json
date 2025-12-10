@@ -1,0 +1,8 @@
+{
+  "name": "Copy of Verum Omnis: AI Forensics for Truth",
+  "description": "A chat interface for Verum Omnis, the world's first legally-validated AI. Engage with an AI grounded in real-world forensic cases and constitutional principles to analyze complex information with unparalleled integrity.",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera"
+  ]
+}

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { VerumOmnisLogo, ArchiveBoxIcon } from './Icons';
+import { ArchiveBoxIcon } from './Icons';
 
 interface HeaderProps {
     onOpenCaseManager?: () => void;
@@ -14,7 +14,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenCaseManager }) => {
         
         <div className="flex flex-col items-center">
             <div className="flex items-center">
-            <VerumOmnisLogo className="h-8 w-8 mr-3" />
+            <img src="/assets/main-logo.png" alt="Verum Omnis Logo" className="h-8 w-8 mr-3" />
             <h1 className="text-xl font-bold tracking-wider text-slate-200">
                 VERUM OMNIS
             </h1>

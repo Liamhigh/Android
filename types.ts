@@ -4,7 +4,7 @@ export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   file?: {
-    name:string;
+    name: string;
     type: string;
     data: string;
   };

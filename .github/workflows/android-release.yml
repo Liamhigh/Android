@@ -39,7 +39,6 @@ jobs:
 
       - name: Setup Capacitor
         run: |
-          npx cap add android
           npx cap sync android
 
       - name: Grant Execute Permission for Gradlew

@@ -58,10 +58,6 @@ const CaseManager: React.FC<CaseManagerProps> = ({ isOpen, onClose, currentCase,
 
         // Artifacts
         for (const artifact of currentCase.artifacts) {
-             // Estimate space needed for this artifact (title + metadata + content preview)
-             const estimatedHeight = 30; // Approximate height in mm
-             layoutManager.ensureSpace(estimatedHeight);
-
              // Artifact title
              doc.setFontSize(14);
              doc.setTextColor(0, 0, 0);

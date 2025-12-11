@@ -67,16 +67,16 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onActionClick, onSav
 
       let heightLeft = imgHeight;
       let position = 0;
-      let page = 1;
-      const pages: number[] = [1];
+      let pageCount = 1;
 
       // Calculate total pages needed
-      while (heightLeft > safeArea.maxHeight) {
-        heightLeft -= safeArea.maxHeight;
-        pages.push(++page);
+      let tempHeightLeft = imgHeight;
+      while (tempHeightLeft > safeArea.maxHeight) {
+        tempHeightLeft -= safeArea.maxHeight;
+        pageCount++;
       }
       
-      const totalPages = pages.length;
+      const totalPages = pageCount;
 
       // Add first page
       // Position content within safe margins
@@ -84,11 +84,11 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onActionClick, onSav
       addFooterAndQR(1, totalPages);
       
       // Add remaining pages
-      for (let i = 2; i <= totalPages; i++) {
+      for (let currentPage = 2; currentPage <= totalPages; currentPage++) {
         position -= safeArea.maxHeight;
         pdf.addPage();
         pdf.addImage(imgData, 'JPEG', MARGINS.LEFT, MARGINS.TOP + position, imgWidth, imgHeight, undefined, 'FAST');
-        addFooterAndQR(i, totalPages);
+        addFooterAndQR(currentPage, totalPages);
       }
       
       pdf.save(`Verum_Omnis_Case_${message.seal?.substring(0,8)}.pdf`);

@@ -306,6 +306,17 @@ export class PDFLayoutManager {
   ensureSpace(requiredHeight: number): void {
     if (!hasSpaceForContent(this.currentY, requiredHeight)) {
       this.addPage();
+      // currentY is already updated by addPage() to the safe area start
+    }
+  }
+  
+  /**
+   * Validate that current position is within safe bounds
+   */
+  validateCurrentPosition(): void {
+    const safeArea = getSafeTextArea();
+    if (this.currentY > safeArea.maxY) {
+      this.addPage();
     }
   }
   
@@ -344,7 +355,7 @@ export class PDFLayoutManager {
    */
   addSpacing(height: number): void {
     this.currentY += height;
-    this.ensureSpace(0); // Check if we've gone past the safe zone
+    this.validateCurrentPosition(); // Check if we've gone past the safe zone
   }
   
   /**

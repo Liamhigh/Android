@@ -105,7 +105,10 @@ You can also trigger the build manually using the "Actions" tab in GitHub and se
 │   ├── aiService.ts     # Main AI service
 │   └── geminiService.ts # Gemini API integration
 ├── utils/               # Utility functions
-│   └── forensics.ts     # Forensic utilities
+│   ├── forensics.ts     # Forensic utilities
+│   └── pdfLayout.ts     # PDF layout standards implementation
+├── docs/                # Documentation
+│   └── PDF_LAYOUT_STANDARDS.md # PDF layout specifications
 ├── android/             # Capacitor Android project
 ├── public/              # Static assets
 │   └── assets/
@@ -132,7 +135,21 @@ The app includes the following key functions:
 - **Capacitor** - Native mobile integration
 - **TailwindCSS** - Styling
 - **Google Gemini AI** - AI engine
-- **jsPDF** - PDF generation
+- **jsPDF** - PDF generation with forensic layout standards
+- **qrcode** - QR code generation for chain of custody
+
+## PDF Layout Standards
+
+All PDF outputs in this application follow strict forensic layout standards to ensure court admissibility and cryptographic integrity. Key features include:
+
+- **A4 Portrait Format** (210mm × 297mm)
+- **Standard Margins**: 25mm top, 20mm left/right, 30mm bottom
+- **Reserved QR Code Zone**: 45mm × 45mm in bottom-right corner on every page
+- **Automatic Page Breaks**: Content automatically wraps to avoid QR code collision
+- **Safe Text Areas**: All content stays within defined margins
+- **Forensic Integrity**: QR codes on every page for chain-of-custody verification
+
+For detailed specifications, see [PDF Layout Standards](docs/PDF_LAYOUT_STANDARDS.md).
 
 ## License
 

@@ -4,6 +4,13 @@ import { CaseFile, CaseArtifact } from '../types';
 import { ShieldCheckIcon, DownloadIcon, ArchiveBoxIcon, XCircleIcon, PaperclipIcon } from './Icons';
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
+import {
+    PDFLayoutManager,
+    getSafeTextArea,
+    addFooterAboveQRZone,
+    MARGINS,
+    PAGE_DIMENSIONS,
+} from '../utils/pdfLayout';
 
 interface CaseManagerProps {
     isOpen: boolean;
@@ -16,64 +23,101 @@ const CaseManager: React.FC<CaseManagerProps> = ({ isOpen, onClose, currentCase,
     if (!isOpen) return null;
 
     const handleExportTimeline = async () => {
-        const doc = new jsPDF();
-        let yPos = 20;
-
-        doc.setFontSize(22);
-        doc.text("VERUM OMNIS: MASTER CASE FILE", 15, yPos);
-        yPos += 10;
+        // Generate QR code for the case ID
+        const qrData = await QRCode.toDataURL(currentCase.caseId);
         
+        // Initialize PDF layout manager
+        const layoutManager = new PDFLayoutManager();
+        const doc = layoutManager.getPDF();
+        const safeArea = getSafeTextArea();
+        
+        // Set QR code to be added to all pages at the end
+        layoutManager.setQRCode(qrData);
+
+        // Header
+        doc.setFontSize(22);
+        doc.setTextColor(0, 0, 0);
+        layoutManager.addText("VERUM OMNIS: MASTER CASE FILE", {
+            fontSize: 22,
+            align: 'left',
+        });
+        layoutManager.addSpacing(5);
+        
+        // Case metadata
         doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(`Case ID: ${currentCase.caseId}`, 15, yPos);
-        yPos += 6;
-        doc.text(`Created: ${new Date(currentCase.created).toLocaleString()}`, 15, yPos);
-        yPos += 15;
+        doc.setTextColor(100, 100, 100);
+        layoutManager.addText(`Case ID: ${currentCase.caseId}`, { fontSize: 10 });
+        layoutManager.addText(`Created: ${new Date(currentCase.created).toLocaleString()}`, { fontSize: 10 });
+        layoutManager.addSpacing(10);
 
+        // Separator line
+        const currentY = layoutManager.getCurrentY();
         doc.setLineWidth(0.5);
-        doc.line(15, yPos, 195, yPos);
-        yPos += 10;
+        doc.line(MARGINS.LEFT, currentY, PAGE_DIMENSIONS.WIDTH - MARGINS.RIGHT, currentY);
+        layoutManager.setCurrentY(currentY + 10);
 
+        // Artifacts
         for (const artifact of currentCase.artifacts) {
-             if (yPos > 250) {
-                 doc.addPage();
-                 yPos = 20;
-             }
+             // Estimate space needed for this artifact (title + metadata + content preview)
+             const estimatedHeight = 30; // Approximate height in mm
+             layoutManager.ensureSpace(estimatedHeight);
 
+             // Artifact title
              doc.setFontSize(14);
-             doc.setTextColor(0);
-             doc.text(artifact.title, 15, yPos);
-             yPos += 6;
+             doc.setTextColor(0, 0, 0);
+             layoutManager.addText(artifact.title, { fontSize: 14 });
+             layoutManager.addSpacing(3);
 
+             // Artifact metadata
              doc.setFontSize(8);
-             doc.setTextColor(100);
-             doc.text(`${artifact.type.toUpperCase()} | ${new Date(artifact.timestamp).toLocaleString()}`, 15, yPos);
-             yPos += 5;
+             doc.setTextColor(100, 100, 100);
+             layoutManager.addText(
+                 `${artifact.type.toUpperCase()} | ${new Date(artifact.timestamp).toLocaleString()}`,
+                 { fontSize: 8 }
+             );
+             
              doc.setFont("courier");
-             doc.text(`SEAL: ${artifact.seal.substring(0, 32)}...`, 15, yPos);
+             layoutManager.addText(`SEAL: ${artifact.seal.substring(0, 32)}...`, { fontSize: 8 });
              doc.setFont("helvetica");
-             yPos += 8;
+             layoutManager.addSpacing(5);
 
-             // Preview content
+             // Content preview
              doc.setFontSize(10);
-             doc.setTextColor(50);
-             const contentPreview = artifact.content.length > 300 ? artifact.content.substring(0, 300) + "..." : artifact.content;
-             const splitText = doc.splitTextToSize(contentPreview, 180);
-             doc.text(splitText, 15, yPos);
-             yPos += (splitText.length * 5) + 10;
+             doc.setTextColor(50, 50, 50);
+             const contentPreview = artifact.content.length > 300 
+                 ? artifact.content.substring(0, 300) + "..." 
+                 : artifact.content;
+             layoutManager.addText(contentPreview, { fontSize: 10 });
+             layoutManager.addSpacing(10);
         }
         
-        // Final Certification
-        doc.addPage();
+        // Final Certification Page
+        layoutManager.addPage();
         doc.setFontSize(18);
-        doc.text("CRYPTOGRAPHIC CERTIFICATION", 15, 30);
-        doc.setFontSize(10);
-        doc.text("This document constitutes a cryptographically sealed timeline of all artifacts.", 15, 40);
+        doc.setTextColor(0, 0, 0);
+        layoutManager.addText("CRYPTOGRAPHIC CERTIFICATION", { fontSize: 18 });
+        layoutManager.addSpacing(5);
         
-        // Add Master QR
-        const qrData = await QRCode.toDataURL(currentCase.caseId);
-        doc.addImage(qrData, 'PNG', 150, 230, 40, 40);
-        doc.text("Verum Omnis patent Pending \u2713", 15, 260);
+        doc.setFontSize(10);
+        layoutManager.addText(
+            "This document constitutes a cryptographically sealed timeline of all artifacts.",
+            { fontSize: 10 }
+        );
+        
+        // Add footer with watermark on all pages
+        const totalPages = doc.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            addFooterAboveQRZone(
+                doc,
+                "Verum Omnis patent Pending \u2713",
+                `Case ID: ${currentCase.caseId.substring(0, 12)}... | Page ${i} of ${totalPages}`,
+                undefined
+            );
+        }
+        
+        // Finalize: Add QR codes to all pages in the reserved zone
+        layoutManager.finalize();
 
         doc.save(`Master_Case_${currentCase.caseId}.pdf`);
     };

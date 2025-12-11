@@ -5,6 +5,15 @@ import html2canvas from 'html2canvas';
 import QRCode from 'qrcode';
 import { ChatMessage as Message } from '../types';
 import { UserIcon, VerumOmnisLogo, PaperclipIcon, ShieldCheckIcon, DownloadIcon, ArchiveBoxIcon } from './Icons';
+import {
+    PDFLayoutManager,
+    getSafeTextArea,
+    addFooterAboveQRZone,
+    addQRCodeToReservedZone,
+    hasSpaceForContent,
+    MARGINS,
+    PAGE_DIMENSIONS,
+} from '../utils/pdfLayout';
 
 interface ChatMessageProps {
   message: Message;
@@ -21,7 +30,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onActionClick, onSav
     if (!source || !message.seal) return;
 
     // Generate QR Code containing the seal hash
-    const qrCodeDataUrl = await QRCode.toDataURL(`VERUM-OMNIS-SEAL:${message.seal}`, { width: 100, margin: 0 });
+    const qrCodeDataUrl = await QRCode.toDataURL(`VERUM-OMNIS-SEAL:${message.seal}`, { width: 200, margin: 1 });
 
     html2canvas(source, {
       scale: 2,
@@ -36,51 +45,50 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onActionClick, onSav
         format: 'a4',
       });
 
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const safeArea = getSafeTextArea();
       
+      // Calculate image dimensions respecting safe area
       const canvasAspectRatio = canvas.width / canvas.height;
-      const imgWidth = pdfWidth;
-      const imgHeight = pdfWidth / canvasAspectRatio;
+      // Use safe area width instead of full page width
+      const imgWidth = safeArea.width;
+      const imgHeight = imgWidth / canvasAspectRatio;
       
-      const addFooter = (pageNumber: number) => {
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        
-        pdf.setFontSize(8);
-        pdf.setTextColor('#94a3b8'); // slate-400
-        
-        // 1. Watermark Tick (Bottom Left)
-        // "Verum Omnis patent Pending [Tick Symbol]"
-        // Using a checkmark-like character
+      const addFooterAndQR = (pageNumber: number, totalPages: number) => {
+        // Add footer text above QR zone
         const watermarkText = "Verum Omnis patent Pending \u2713"; 
-        pdf.text(watermarkText, 10, pageHeight - 10);
-        
-        // 2. Partial Hash + Page Num (Bottom Center-ish)
         const partialHash = message.seal ? `Hash: ${message.seal.substring(0, 12)}...` : 'Unsealed';
-        pdf.text(`${partialHash} | Page ${pageNumber}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-
-        // 3. QR Code (Bottom Right)
-        // Draw image at x, y, w, h. 
-        // 20x20mm QR code
-        pdf.addImage(qrCodeDataUrl, 'PNG', pageWidth - 25, pageHeight - 25, 15, 15);
+        const centerText = `${partialHash} | Page ${pageNumber} of ${totalPages}`;
+        
+        addFooterAboveQRZone(pdf, watermarkText, centerText, undefined);
+        
+        // Add QR Code to reserved zone (bottom-right corner)
+        addQRCodeToReservedZone(pdf, qrCodeDataUrl);
       };
 
       let heightLeft = imgHeight;
       let position = 0;
       let page = 1;
+      const pages: number[] = [1];
 
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-      addFooter(page);
-      heightLeft -= pdfHeight;
+      // Calculate total pages needed
+      while (heightLeft > safeArea.maxHeight) {
+        heightLeft -= safeArea.maxHeight;
+        pages.push(++page);
+      }
+      
+      const totalPages = pages.length;
 
-      while (heightLeft > 0) {
-        position -= pdfHeight; // Move to next page area
+      // Add first page
+      // Position content within safe margins
+      pdf.addImage(imgData, 'JPEG', MARGINS.LEFT, MARGINS.TOP + position, imgWidth, imgHeight, undefined, 'FAST');
+      addFooterAndQR(1, totalPages);
+      
+      // Add remaining pages
+      for (let i = 2; i <= totalPages; i++) {
+        position -= safeArea.maxHeight;
         pdf.addPage();
-        page++;
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-        addFooter(page);
-        heightLeft -= pdfHeight;
+        pdf.addImage(imgData, 'JPEG', MARGINS.LEFT, MARGINS.TOP + position, imgWidth, imgHeight, undefined, 'FAST');
+        addFooterAndQR(i, totalPages);
       }
       
       pdf.save(`Verum_Omnis_Case_${message.seal?.substring(0,8)}.pdf`);
